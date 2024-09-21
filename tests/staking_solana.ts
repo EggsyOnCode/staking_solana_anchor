@@ -242,110 +242,110 @@ describe("staking_solana", () => {
     assert.equal(BigInt(1e9), bPDA, "PDA should have 1 token");
   });
 
-  // it("stake", async () => {
-  //   // Create user account
-  //   const local_connection = new Connection("http://localhost:8899", {
-  //     commitment: "confirmed",
-  //   });
+  it("stake", async () => {
+    // Create user account
+    const local_connection = new Connection("http://localhost:8899", {
+      commitment: "confirmed",
+    });
 
-  //   console.log("mint is:", mint);
+    console.log("mint is:", mint);
 
-  //   const user_addr = Keypair.generate();
+    const user_addr = Keypair.generate();
 
-  //   // creating ATA to the user (user is the owner of token account)
-  //   const user = await getOrCreateAssociatedTokenAccount(
-  //     local_connection,
-  //     payer.payer,
-  //     mint,
-  //     payer.publicKey // Correct owner of token account is the user
-  //   );
+    // creating ATA to the user (user is the owner of token account)
+    const user = await getOrCreateAssociatedTokenAccount(
+      local_connection,
+      payer.payer,
+      mint,
+      payer.publicKey // Correct owner of token account is the user
+    );
 
-  //   console.log("user token account is ", user.address);
+    console.log("user token account is ", user.address);
 
-  //   // Mint some tokens to the user (e.g., 100 tokens)
-  //   await mintTo(
-  //     local_connection,
-  //     payer.payer,
-  //     mint,
-  //     user.address, // Correct user token account
-  //     payer.publicKey, // payer is the owner of the mint
-  //     1e11, // This mints 100 tokens (1e11 atomic units with 9 decimals)
-  //     [payer.payer]
-  //   );
+    // Mint some tokens to the user (e.g., 100 tokens)
+    await mintTo(
+      local_connection,
+      payer.payer,
+      mint,
+      user.address, // Correct user token account
+      payer.publicKey, // payer is the owner of the mint
+      1e11, // This mints 100 tokens (1e11 atomic units with 9 decimals)
+      [payer.payer]
+    );
 
-  //   // Get the user's initial token balance before staking
-  //   const initialUserBalance = await getTokenBalance(
-  //     local_connection,
-  //     mint,
-  //     payer.publicKey // Use the correct user token account
-  //   );
-  //   console.log("Initial User Token Balance:", initialUserBalance);
+    // Get the user's initial token balance before staking
+    const initialUserBalance = await getTokenBalance(
+      local_connection,
+      mint,
+      payer.publicKey // Use the correct user token account
+    );
+    console.log("Initial User Token Balance:", initialUserBalance);
 
-  //   // Get the stake info account for the program
-  //   const [stake_info] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("stake_info_account"), payer.publicKey.toBuffer()],
-  //     program.programId
-  //   );
+    // Get the stake info account for the program
+    const [stake_info] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info_account"), payer.publicKey.toBuffer()],
+      program.programId
+    );
 
-  //   // Get the user_stake PDA (program-derived address)
-  //   const [stake_account] = PublicKey.findProgramAddressSync(
-  //     [Buffer.from("token_seed"), payer.publicKey.toBuffer()], // Ensure the correct user address is used for PDA derivation
-  //     program.programId
-  //   );
+    // Get the user_stake PDA (program-derived address)
+    const [stake_account] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token_seed"), payer.publicKey.toBuffer()], // Ensure the correct user address is used for PDA derivation
+      program.programId
+    );
 
-  //   // Create an associated token account for the user_stake PDA (program owns the stake account)
-  //   const stake_acc_ata = await getOrCreateAssociatedTokenAccount(
-  //     local_connection,
-  //     payer.payer,
-  //     mint,
-  //     stake_account, // Stake account owned by the program's PDA
-  //     true // This ensures it creates the ATA for the program's PDA
-  //   );
-  //   console.log("stake ATA is ", stake_acc_ata.address);
-  //   console.log("user token account is ", user.address);
+    // Create an associated token account for the user_stake PDA (program owns the stake account)
+    const stake_acc_ata = await getOrCreateAssociatedTokenAccount(
+      local_connection,
+      payer.payer,
+      mint,
+      stake_account, // Stake account owned by the program's PDA
+      true // This ensures it creates the ATA for the program's PDA
+    );
+    console.log("stake ATA is ", stake_acc_ata.address);
+    console.log("user token account is ", user.address);
 
-  //   // Staking 1 token (1e9 in atomic units, considering 9 decimals)
-  //   const amountToStake = new anchor.BN(1); // This represents 1 token
+    // Staking 1 token (1e9 in atomic units, considering 9 decimals)
+    const amountToStake = new anchor.BN(1); // This represents 1 token
 
-  //   // Execute the staking transaction
-  //   const tx = await program.methods
-  //     .stake(amountToStake) // Assuming 1 token is being staked
-  //     .signers([payer.payer])
-  //     .accountsPartial({
-  //       stakeInfoAccount: stake_info,
-  //       userStakingAccount: stake_account,
-  //       userTokenAccount: user.address, // Use the correct user token account
-  //       mint: mint,
-  //       signer: payer.publicKey, // The signer should be the user staking the tokens
-  //     })
-  //     .rpc();
+    // Execute the staking transaction
+    const tx = await program.methods
+      .stake(amountToStake) // Assuming 1 token is being staked
+      .signers([payer.payer])
+      .accountsPartial({
+        stakeInfoAccount: stake_info,
+        userStakingAccount: stake_account,
+        userTokenAccount: user.address, // Use the correct user token account
+        mint: mint,
+        signer: payer.publicKey, // The signer should be the user staking the tokens
+      })
+      .rpc();
 
-  //   console.log("Transaction signature:", tx);
+    console.log("Transaction signature:", tx);
 
-  //   // Get the user's token balance after staking
-  //   const token_amt = (await getAccount(local_connection, user.address)).amount;
-  //   console.log("Final User Token Balance:", token_amt);
+    // Get the user's token balance after staking
+    const token_amt = (await getAccount(local_connection, user.address)).amount;
+    console.log("Final User Token Balance:", token_amt);
 
-  //   // Check that the user's balance was reduced by the staked amount (1 token)
-  //   assert.equal(
-  //     BigInt(initialUserBalance) - token_amt,
-  //     BigInt(1e9), // 1 token in atomic units (with 9 decimals)
-  //     "User's token balance should decrease by 1 token"
-  //   );
+    // Check that the user's balance was reduced by the staked amount (1 token)
+    assert.equal(
+      BigInt(initialUserBalance) - token_amt,
+      BigInt(1e9), // 1 token in atomic units (with 9 decimals)
+      "User's token balance should decrease by 1 token"
+    );
 
-  //   // Get the staked account balance to verify the staked amount
-  //   const stakedAccountBalance = await getTokenBalance(
-  //     local_connection,
-  //     mint,
-  //     stake_acc_ata.address // Check the stake account's balance
-  //   );
-  //   console.log("Staked Account Balance:", stakedAccountBalance);
+    // Get the staked account balance to verify the staked amount
+    const stakedAccountBalance = await getTokenBalance(
+      local_connection,
+      mint,
+      stake_acc_ata.address // Check the stake account's balance
+    );
+    console.log("Staked Account Balance:", stakedAccountBalance);
 
-  //   // Check that the staked account has the staked tokens (1 token)
-  //   assert.equal(
-  //     BigInt(stakedAccountBalance),
-  //     BigInt(1e9), // 1 token in atomic units (with 9 decimals)
-  //     "Staked account should have the correct token amount (1 token)"
-  //   );
-  // });
+    // Check that the staked account has the staked tokens (1 token)
+    assert.equal(
+      BigInt(stakedAccountBalance),
+      BigInt(1e9), // 1 token in atomic units (with 9 decimals)
+      "Staked account should have the correct token amount (1 token)"
+    );
+  });
 });

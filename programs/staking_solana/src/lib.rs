@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
     token::{TokenAccount, Mint,Token, Transfer, transfer, Approve},
-    associated_token::AssociatedToken
+    associated_token::{AssociatedToken, create, get_associated_token_address}
 };
 use std::mem::size_of;
 // use solana_program::clock::Clock;
@@ -54,7 +54,7 @@ pub mod staking_solana {
        msg!("Transferring {} tokens from user_token_account ({}) to user_staking_account ({})", 
             stake_amt, 
             ctx.accounts.user_token_account.key(), // 9zMo (which should be user staking account)
-            ctx.accounts.user_staking_account.key() // 
+            ctx.accounts.user_staking_ata.key() // 
         );
 
 
@@ -64,7 +64,7 @@ pub mod staking_solana {
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.user_token_account.to_account_info(),
-                    to: ctx.accounts.user_staking_account.to_account_info(),
+                    to: ctx.accounts.user_staking_ata.to_account_info(),
                     authority: ctx.accounts.signer.to_account_info(),
                 }
             ),
@@ -72,7 +72,7 @@ pub mod staking_solana {
         )?;
         
         msg!("balance of the user token account is {:?}", ctx.accounts.user_token_account.amount);
-        msg!("balance of the user stake account is {:?}", ctx.accounts.user_staking_account.amount);
+        msg!("balance of the user stake account is {:?}", ctx.accounts.user_staking_ata.amount);
             
         
 
@@ -135,6 +135,14 @@ pub struct Stake<'info> {
     pub user_staking_account : Account<'info, TokenAccount>,
 
     #[account(
+        init_if_needed,
+        payer = signer,
+        associated_token::mint = mint,
+        associated_token::authority = user_staking_account
+    )]
+    user_staking_ata : Account<'info, TokenAccount>,
+
+    #[account(
         mut,
         associated_token::mint = mint,
         associated_token::authority = signer
@@ -144,7 +152,7 @@ pub struct Stake<'info> {
     #[account()]
     pub mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
-    pub associated_program : Program<'info, AssociatedToken>,
+    pub associated_token_program : Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
