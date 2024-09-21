@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{
-    token::{TokenAccount, Mint,Token, Transfer, transfer},
+    token::{TokenAccount, Mint,Token, Transfer, transfer, Approve},
     associated_token::AssociatedToken
 };
 use std::mem::size_of;
@@ -51,11 +51,18 @@ pub mod staking_solana {
         // 10^decimals * amt
         let stake_amt = amt.checked_mul(10u64.pow(ctx.accounts.mint.decimals as u32)).unwrap();
 
+       msg!("Transferring {} tokens from user_token_account ({}) to user_staking_account ({})", 
+            stake_amt, 
+            ctx.accounts.user_token_account.key(), // 9zMo (which should be user staking account)
+            ctx.accounts.user_staking_account.key() // 
+        );
+
+
         // transfer stake amt to user_Stake_account from user_token_account
-        transfer(
+        anchor_spl::token::transfer(
             CpiContext::new(
                 ctx.accounts.token_program.to_account_info(),
-                Transfer{
+                Transfer {
                     from: ctx.accounts.user_token_account.to_account_info(),
                     to: ctx.accounts.user_staking_account.to_account_info(),
                     authority: ctx.accounts.signer.to_account_info(),
@@ -63,6 +70,9 @@ pub mod staking_solana {
             ),
             stake_amt 
         )?;
+        
+        msg!("balance of the user token account is {:?}", ctx.accounts.user_token_account.amount);
+        msg!("balance of the user stake account is {:?}", ctx.accounts.user_staking_account.amount);
             
         
 
