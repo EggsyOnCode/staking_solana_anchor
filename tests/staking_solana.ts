@@ -3,13 +3,20 @@ import { Program } from "@coral-xyz/anchor";
 import { StakingSolana } from "../target/types/staking_solana";
 import { assert } from "chai";
 import * as fs from "fs";
-import { createMint } from "@solana/spl-token";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
+import {
+  createMint,
+  getOrCreateAssociatedTokenAccount,
+  mintTo,
+} from "@solana/spl-token";
+import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
 
 describe("staking_solana", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
-  const connection = new Connection("http://localhost:8899", "confirmed");
+  // const connection = new Connection("http://localhost:8899", {
+  //   commitment: "confirmed",
+  // });
+  const connection = anchor.getProvider().connection;
   const payer = anchor.AnchorProvider.env().wallet as anchor.Wallet;
   const mintKeyPair = Keypair.fromSecretKey(
     new Uint8Array([
@@ -19,8 +26,9 @@ describe("staking_solana", () => {
       152, 103, 169, 95, 153, 21, 238, 147, 45, 203, 235, 253, 26, 203, 6,
     ])
   );
+  let mint: anchor.web3.PublicKey;
 
-  async function createMintToken() {
+  async function createMintToken(connection: any, mintKeyPair?: Keypair) {
     const mint = await createMint(
       connection,
       payer.payer,
@@ -38,7 +46,7 @@ describe("staking_solana", () => {
   const program = anchor.workspace.StakingSolana as Program<StakingSolana>;
 
   it("initializes successfully!", async () => {
-    const min = await createMintToken();
+    mint = await createMintToken(connection, mintKeyPair);
 
     const [vault] = PublicKey.findProgramAddressSync(
       [Buffer.from("vault")],
@@ -50,9 +58,71 @@ describe("staking_solana", () => {
       .accountsPartial({
         tokenVaultAccount: vault,
         signer: payer.publicKey,
-        mint: min,
+        mint: mint,
       })
       .rpc();
+    console.log("Your transaction signature", tx);
+  });
+
+  it("stake", async () => {
+    // create user account
+    const local_connection = new Connection("http://localhost:8899", {
+      commitment: "confirmed",
+    });
+
+    console.log("mint is : ", mint);
+    
+    const user = getOrCreateAssociatedTokenAccount(
+      local_connection,
+      payer.payer,
+      mint,
+      payer.publicKey
+    );
+
+    // mint some tokens to the user
+    await mintTo(
+      local_connection,
+      payer.payer,
+      mint,
+      (
+        await user
+      ).address,
+      mintKeyPair,
+      1e11
+    );
+
+    // get the stake account for the program
+    const [stake_info] = PublicKey.findProgramAddressSync(
+      [Buffer.from("stake_info_account"), payer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // get the user_stake token account (to store the user's stake)
+    const [user_stake] = PublicKey.findProgramAddressSync(
+      [Buffer.from("token_seed"), payer.publicKey.toBuffer()],
+      program.programId
+    );
+
+    // why the hell do we need another token account for the user?
+    // await getOrCreateAssociatedTokenAccount(
+    //   connection,
+    //   payer.payer,
+    //   mint,
+    //   payer.publicKey
+    // );
+
+    const tx = await program.methods
+      .stake(new anchor.BN(1))
+      .signers([payer.payer])
+      .accountsPartial({
+        stakeInfoAccount: stake_info,
+        userStakingAccount: user_stake,
+        userTokenAccount: (await user).address,
+        mint: mint,
+        signer: payer.publicKey,
+      })
+      .rpc();
+
     console.log("Your transaction signature", tx);
   });
 });
