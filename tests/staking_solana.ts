@@ -118,8 +118,8 @@ describe("staking_solana", () => {
     const user1 = Keypair.generate();
     const user2 = Keypair.generate();
 
-    console.log("user 1 is ", user1.publicKey);
-    console.log("user 2 is ", user2.publicKey);
+    // console.log("user 1 is ", user1.publicKey);
+    // console.log("user 2 is ", user2.publicKey);
 
     const u1ATA = await getOrCreateAssociatedTokenAccount(
       connection,
@@ -135,8 +135,8 @@ describe("staking_solana", () => {
       user2.publicKey
     );
 
-    console.log("user 1 ata is ", u1ATA.address);
-    console.log("user 2 ata is ", u2ATA.address);
+    // console.log("user 1 ata is ", u1ATA.address);
+    // console.log("user 2 ata is ", u2ATA.address);
 
     // Mint tokens to user1's ATA
     await mintTo(
@@ -151,7 +151,7 @@ describe("staking_solana", () => {
 
     // Verify balances
     const bU1 = (await getAccount(connection, u1ATA.address)).amount;
-    console.log("Balance of user1's ATA is", bU1);
+    // console.log("Balance of user1's ATA is", bU1);
 
     await transfer(
       connection,
@@ -165,9 +165,81 @@ describe("staking_solana", () => {
 
     // Verify balance of user2's ATA after the transfer
     const bU2 = (await getAccount(connection, u2ATA.address)).amount;
-    console.log("Balance of user2's ATA is", bU2);
+    // console.log("Balance of user2's ATA is", bU2);
 
     assert.equal(BigInt(1e9), bU2, "User2 should have 1 token");
+  });
+  it("transfer SPL tokens to PDA ATA ", async () => {
+    const mPair = Keypair.generate();
+    const mint2 = await createMint(
+      connection,
+      payer.payer,
+      mPair.publicKey, // mint authority
+      mPair.publicKey, // freeze authority
+      9 // decimals
+    );
+
+    const user1 = Keypair.generate();
+
+    // Define a dummy program ID (replace with your actual program ID when ready)
+    const dummyProgramId = new PublicKey(
+      "DummyProgram11111111111111111111111111111111"
+    );
+
+    // Derive the PDA (program-derived address) for the dummy program
+    const [dummyPDA] = await PublicKey.findProgramAddress(
+      [Buffer.from("dummy-seed")], // Seed for PDA derivation
+      dummyProgramId // Dummy Program ID
+    );
+
+    // Create associated token account (ATA) for the PDA
+    const u1ATA = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mint2, // Mint public key
+      user1.publicKey // user1's public key
+    );
+
+    const pdaATA = await getOrCreateAssociatedTokenAccount(
+      connection,
+      payer.payer,
+      mint2, // Mint public key
+      dummyPDA, // PDA address as owner
+      true
+    );
+
+    // Mint tokens to user1's ATA
+    await mintTo(
+      connection,
+      payer.payer,
+      mint2, // mint public key
+      u1ATA.address, // user1's ATA
+      mPair.publicKey, // mint authority
+      1e11, // amount in atomic units (100 tokens)
+      [mPair]
+    );
+
+    // Verify balance of user1 before transfer
+    const bU1 = (await getAccount(connection, u1ATA.address)).amount;
+    console.log("Balance of user1's ATA is", bU1);
+
+    // Transfer tokens from user1's ATA to the PDA's ATA
+    await transfer(
+      connection,
+      payer.payer,
+      u1ATA.address, // From: user1's ATA
+      pdaATA.address, // To: PDA's ATA
+      user1.publicKey, // user1 is the signer (owner of u1ATA)
+      1e9, // Transfer 1 token (atomic units)
+      [user1]
+    );
+
+    // Verify balance of PDA's ATA after the transfer
+    const bPDA = (await getAccount(connection, pdaATA.address)).amount;
+    console.log("Balance of PDA's ATA is", bPDA);
+
+    // Assert to check if PDA received the transferred tokens
+    assert.equal(BigInt(1e9), bPDA, "PDA should have 1 token");
   });
 
   // it("stake", async () => {
@@ -197,7 +269,8 @@ describe("staking_solana", () => {
   //     mint,
   //     user.address, // Correct user token account
   //     payer.publicKey, // payer is the owner of the mint
-  //     1e11 // This mints 100 tokens (1e11 atomic units with 9 decimals)
+  //     1e11, // This mints 100 tokens (1e11 atomic units with 9 decimals)
+  //     [payer.payer]
   //   );
 
   //   // Get the user's initial token balance before staking
